@@ -16,9 +16,8 @@
 
 package com.dataartisans.flink_demo.utils
 
-import org.apache.flink.configuration.{ConfigConstants, Configuration}
-import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment
-import org.apache.flink.streaming.api.environment.LocalStreamEnvironment
+import org.apache.flink.configuration.{ConfigConstants, Configuration, WebOptions}
+import org.apache.flink.streaming.api.scala.StreamExecutionEnvironment
 
 object DemoStreamEnvironment {
 
@@ -27,10 +26,9 @@ object DemoStreamEnvironment {
     // start the web dashboard
     config.setBoolean(ConfigConstants.LOCAL_START_WEBSERVER, true)
     // required to start the web dashboard
-    config.setString(ConfigConstants.JOB_MANAGER_WEB_LOG_PATH_KEY, "./data/dummyLogFile.txt")
+    config.setString(WebOptions.LOG_PATH, "./data/dummyLogFile.txt")
 
-    // create a local stream execution environment
-    new LocalStreamEnvironment(config)
+    // create a local stream execution environment, 2 represent parallelism, it's the core number of my machine
+    StreamExecutionEnvironment.createLocalEnvironment(2, config)
   }
-
 }

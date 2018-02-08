@@ -16,33 +16,33 @@
 
 package com.dataartisans.flink_demo.examples
 
-import com.dataartisans.flink_demo.datatypes.{TaxiRide, GeoPoint}
+import com.dataartisans.flink_demo.datatypes.{GeoPoint, TaxiRide}
 import com.dataartisans.flink_demo.sinks.ElasticsearchUpsertSink
 import com.dataartisans.flink_demo.sources.TaxiRideSource
 import com.dataartisans.flink_demo.utils.{DemoStreamEnvironment, NycGeoUtils}
 import org.apache.flink.streaming.api.TimeCharacteristic
-import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment
-import org.apache.flink.streaming.api.scala._
+import org.apache.flink.streaming.api.scala.{DataStream, _}
 import org.apache.flink.streaming.api.windowing.time.Time
 import org.apache.flink.streaming.api.windowing.windows.TimeWindow
 import org.apache.flink.util.Collector
 
+
 /**
- * Apache Flink DataStream API demo application.
- *
- * The program processes a stream of taxi ride events from the New York City Taxi and Limousine
- * Commission (TLC).
- * It computes every five minutes for each location the total number of persons that arrived
- * within the last 15 minutes by taxi.
- *
- * See
- *   http://github.com/dataartisans/flink-streaming-demo
- * for more detail.
- *
- */
+  * Apache Flink DataStream API demo application.
+  *
+  * The program processes a stream of taxi ride events from the New York City Taxi and Limousine
+  * Commission (TLC).
+  * It computes every five minutes for each location the total number of persons that arrived
+  * within the last 15 minutes by taxi.
+  *
+  * See
+  * http://github.com/dataartisans/flink-streaming-demo
+  * for more detail.
+  *
+  */
 object SlidingArrivalCount {
 
-  def main(args: Array[String]) {
+  def main(args: Array[String]): Unit = {
 
     // input parameters
     val data = "./data/nycTaxiData.gz"
@@ -51,12 +51,12 @@ object SlidingArrivalCount {
 
     // window parameters
     val countWindowLength = 15 // window size in min
-    val countWindowFrequency =  5 // window trigger interval in min
-    val earlyCountThreshold = 50
+    val countWindowFrequency = 5 // window trigger interval in min
+    //val earlyCountThreshold = 50
 
     // Elasticsearch parameters
-    val writeToElasticsearch = false // set to true to write results to Elasticsearch
-    val elasticsearchHost = "" // look-up hostname in Elasticsearch log output
+    val writeToElasticsearch = true // set to true to write results to Elasticsearch
+    val elasticsearchHost = "cloud3,cloud4,cloud5" // look-up hostname in Elasticsearch log output
     val elasticsearchPort = 9300
 
 
@@ -68,15 +68,14 @@ object SlidingArrivalCount {
     val rides: DataStream[TaxiRide] = env.addSource(new TaxiRideSource(
       data, maxServingDelay, servingSpeedFactor))
 
-    val cleansedRides = rides
+    val cleansedRides: DataStream[TaxiRide] = rides
       // filter for trip end events
-      .filter( !_.isStart )
+      .filter(!_.isStart)
       // filter for events in NYC
-      .filter( r => NycGeoUtils.isInNYC(r.location) )
+      .filter(r => NycGeoUtils.isInNYC(r.location))
 
     // map location coordinates to cell Id, timestamp, and passenger count
-    val cellIds: DataStream[(Int, Short)] = cleansedRides
-      .map( r => ( NycGeoUtils.mapToGridCell(r.location), r.passengerCnt ) )
+    val cellIds: DataStream[(Int, Short)] = cleansedRides.map(r => (NycGeoUtils.mapToGridCell(r.location), r.passengerCnt))
 
     val passengerCnts: DataStream[(Int, Long, Int)] = cellIds
       // key stream by cell Id
@@ -89,21 +88,19 @@ object SlidingArrivalCount {
                  window: TimeWindow,
                  events: Iterable[(Int, Short)],
                  out: Collector[(Int, Long, Int)]) =>
-        out.collect( ( cell, window.getEnd, events.map( _._2 ).sum ) )
-      }
+      out.collect((cell, window.getEnd, events.map(_._2).sum))
+    }
 
     // map cell Id back to GeoPoint
     val cntByLocation: DataStream[(Int, Long, GeoPoint, Int)] = passengerCnts
-      .map( r => ( r._1, r._2, NycGeoUtils.getGridCellCenter(r._1), r._3 ) )
+      .map(r => (r._1, r._2, NycGeoUtils.getGridCellCenter(r._1), r._3))
 
     // print to console
-    cntByLocation
-      .print()
+    cntByLocation.print()
 
     if (writeToElasticsearch) {
       // write to Elasticsearch
-      cntByLocation
-        .addSink(new CntByLocTimeUpsert(elasticsearchHost, elasticsearchPort))
+      cntByLocation.addSink(new CntByLocTimeUpsert(elasticsearchHost, elasticsearchPort))
     }
 
     env.execute("Sliding passenger count per location")
@@ -114,20 +111,20 @@ object SlidingArrivalCount {
     extends ElasticsearchUpsertSink[(Int, Long, GeoPoint, Int)](
       host,
       port,
-      "elasticsearch",
+      "bigdata-es",
       "nyc-idx",
       "popular-locations") {
 
     override def insertJson(r: (Int, Long, GeoPoint, Int)): Map[String, AnyRef] = {
       Map(
-        "location" -> (r._3.lat+","+r._3.lon).asInstanceOf[AnyRef],
+        "location" -> (r._3.lat + "," + r._3.lon).asInstanceOf[AnyRef],
         "time" -> r._2.asInstanceOf[AnyRef],
         "cnt" -> r._4.asInstanceOf[AnyRef]
       )
     }
 
     override def updateJson(r: (Int, Long, GeoPoint, Int)): Map[String, AnyRef] = {
-      Map[String, AnyRef] (
+      Map[String, AnyRef](
         "cnt" -> r._4.asInstanceOf[AnyRef]
       )
     }

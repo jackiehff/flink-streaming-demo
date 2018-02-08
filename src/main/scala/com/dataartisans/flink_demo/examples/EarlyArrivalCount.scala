@@ -16,36 +16,39 @@
 
 package com.dataartisans.flink_demo.examples
 
-import com.dataartisans.flink_demo.datatypes.{TaxiRide, GeoPoint}
+import java.lang.{Integer => JInt}
+
+import com.dataartisans.flink_demo.datatypes.{GeoPoint, TaxiRide}
 import com.dataartisans.flink_demo.sinks.ElasticsearchUpsertSink
 import com.dataartisans.flink_demo.sources.TaxiRideSource
 import com.dataartisans.flink_demo.utils.{DemoStreamEnvironment, NycGeoUtils}
+import org.apache.flink.api.common.state.ValueStateDescriptor
+import org.apache.flink.api.common.typeinfo.Types
 import org.apache.flink.streaming.api.TimeCharacteristic
-import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment
 import org.apache.flink.streaming.api.scala._
 import org.apache.flink.streaming.api.windowing.time.Time
-import org.apache.flink.streaming.api.windowing.triggers.Trigger
-import org.apache.flink.streaming.api.windowing.triggers.Trigger.{TriggerResult, TriggerContext}
+import org.apache.flink.streaming.api.windowing.triggers.Trigger.TriggerContext
+import org.apache.flink.streaming.api.windowing.triggers.{Trigger, TriggerResult}
 import org.apache.flink.streaming.api.windowing.windows.TimeWindow
 import org.apache.flink.util.Collector
 
 /**
- * Apache Flink DataStream API demo application.
- *
- * The program processes a stream of taxi ride events from the New York City Taxi and Limousine
- * Commission (TLC).
- * It computes every five minutes for each location the total number of persons that arrived
- * within the last 15 minutes by taxi. The program emits early partial count results whenever more
- * than 50 persons (or a multitude of 50 persons) arrive at a location within 15 minutes.
- *
- * See
- *   http://github.com/dataartisans/flink-streaming-demo
- * for more detail.
- *
- */
+  * Apache Flink DataStream API demo application.
+  *
+  * The program processes a stream of taxi ride events from the New York City Taxi and Limousine
+  * Commission (TLC).
+  * It computes every five minutes for each location the total number of persons that arrived
+  * within the last 15 minutes by taxi. The program emits early partial count results whenever more
+  * than 50 persons (or a multitude of 50 persons) arrive at a location within 15 minutes.
+  *
+  * See
+  * http://github.com/dataartisans/flink-streaming-demo
+  * for more detail.
+  *
+  */
 object EarlyArrivalCount {
 
-  def main(args: Array[String]) {
+  def main(args: Array[String]): Unit = {
 
     // input parameters
     val data = "./data/nycTaxiData.gz"
@@ -54,7 +57,7 @@ object EarlyArrivalCount {
 
     // window parameters
     val countWindowLength = 15 // window size in min
-    val countWindowFrequency =  5 // window trigger interval in min
+    val countWindowFrequency = 5 // window trigger interval in min
     val earlyCountThreshold = 50
 
     // Elasticsearch parameters
@@ -71,15 +74,15 @@ object EarlyArrivalCount {
     val rides: DataStream[TaxiRide] = env.addSource(new TaxiRideSource(
       data, maxServingDelay, servingSpeedFactor))
 
-    val cleansedRides = rides
+    val cleansedRides: DataStream[TaxiRide] = rides
       // filter for trip end events
-      .filter( !_.isStart )
+      .filter(!_.isStart)
       // filter for events in NYC
-      .filter( r => NycGeoUtils.isInNYC(r.location) )
+      .filter(r => NycGeoUtils.isInNYC(r.location))
 
     // map location coordinates to cell Id, timestamp, and passenger count
     val cellIds: DataStream[(Int, Short)] = cleansedRides
-      .map( r => ( NycGeoUtils.mapToGridCell(r.location), r.passengerCnt ) )
+      .map(r => (NycGeoUtils.mapToGridCell(r.location), r.passengerCnt))
 
     val passengerCnts: DataStream[(Int, Long, Int)] = cellIds
       // key stream by cell Id
@@ -93,21 +96,19 @@ object EarlyArrivalCount {
                  window: TimeWindow,
                  events: Iterable[(Int, Short)],
                  out: Collector[(Int, Long, Int)]) =>
-        out.collect( ( cell, window.getEnd, events.map( _._2 ).sum ) )
-      }
+      out.collect((cell, window.getEnd, events.map(_._2).sum))
+    }
 
     val cntByLocation: DataStream[(Int, Long, GeoPoint, Int)] = passengerCnts
       // map cell Id back to GeoPoint
-      .map( r => ( r._1, r._2, NycGeoUtils.getGridCellCenter(r._1), r._3 ) )
+      .map(r => (r._1, r._2, NycGeoUtils.getGridCellCenter(r._1), r._3))
 
     // print to console
-    cntByLocation
-      .print()
+    cntByLocation.print()
 
     if (writeToElasticsearch) {
       // write to Elasticsearch
-      cntByLocation
-        .addSink(new CntByLocTimeUpsert(elasticsearchHost, elasticsearchPort))
+      cntByLocation.addSink(new CntByLocTimeUpsert(elasticsearchHost, elasticsearchPort))
     }
 
     env.execute("Early arrival counts per location")
@@ -116,46 +117,49 @@ object EarlyArrivalCount {
 
   class EarlyCountTrigger(triggerCnt: Int) extends Trigger[(Int, Short), TimeWindow] {
 
+    val personCntStateDesc = new ValueStateDescriptor[JInt]("personCnt", Types.INT)
+
     override def onElement(
-      event: (Int, Short),
-      timestamp: Long,
-      window: TimeWindow,
-      ctx: TriggerContext): TriggerResult = {
+                            event: (Int, Short),
+                            timestamp: Long,
+                            window: TimeWindow,
+                            ctx: TriggerContext): TriggerResult = {
 
       // register event time timer for end of window
       ctx.registerEventTimeTimer(window.getEnd)
-      
+
       // get current count
-      val personCnt = ctx.getKeyValueState[Integer]("personCnt", 0)
+      val personCnt = ctx.getPartitionedState(personCntStateDesc).value()
       // update count by passenger cnt of new event
-      personCnt.update(personCnt.value() + event._2)
+      ctx.getPartitionedState(personCntStateDesc).update(personCnt + event._2)
       // check if count is high enough for early notification
-      if (personCnt.value() < triggerCnt) {
+      if (ctx.getPartitionedState(personCntStateDesc).value() < triggerCnt) {
         // not yet
         TriggerResult.CONTINUE
       }
       else {
         // trigger count is reached
-        personCnt.update(0)
+        ctx.getPartitionedState(personCntStateDesc).update(0)
         TriggerResult.FIRE
       }
     }
 
     override def onEventTime(
-      time: Long,
-      window: TimeWindow,
-      ctx: TriggerContext): TriggerResult = {
+                              time: Long,
+                              window: TimeWindow,
+                              ctx: TriggerContext): TriggerResult = {
 
       // trigger final computation
       TriggerResult.FIRE_AND_PURGE
     }
 
     override def onProcessingTime(
-      time: Long,
-      window: TimeWindow,
-      ctx: TriggerContext): TriggerResult = {
+                                   time: Long,
+                                   window: TimeWindow,
+                                   ctx: TriggerContext): TriggerResult = TriggerResult.CONTINUE
 
-      throw new UnsupportedOperationException("I am not a processing time trigger")
+    override def clear(window: TimeWindow, ctx: TriggerContext): Unit = {
+      ctx.getPartitionedState(personCntStateDesc).clear()
     }
   }
 
@@ -170,14 +174,14 @@ object EarlyArrivalCount {
 
     override def insertJson(r: (Int, Long, GeoPoint, Int)): Map[String, AnyRef] = {
       Map(
-        "location" -> (r._3.lat+","+r._3.lon).asInstanceOf[AnyRef],
+        "location" -> (r._3.lat + "," + r._3.lon).asInstanceOf[AnyRef],
         "time" -> r._2.asInstanceOf[AnyRef],
         "cnt" -> r._4.asInstanceOf[AnyRef]
       )
     }
 
     override def updateJson(r: (Int, Long, GeoPoint, Int)): Map[String, AnyRef] = {
-      Map[String, AnyRef] (
+      Map[String, AnyRef](
         "cnt" -> r._4.asInstanceOf[AnyRef]
       )
     }
@@ -188,5 +192,5 @@ object EarlyArrivalCount {
     }
   }
 
- }
+}
 

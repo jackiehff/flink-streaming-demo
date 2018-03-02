@@ -95,14 +95,14 @@ The demo applications in this repository are prepared to write their output to [
 Data in Elasticsearch can be easily visualized using [Kibana](https://www.elastic.co/products/kibana)
 for real-time monitoring and interactive analysis.
 
-Our demo applications depend on Elasticsearch 1.7.3 and Kibana 4.1.3. Both systems have a nice
+Our demo applications depend on Elasticsearch 6.2.2 and Kibana 6.2.2. Both systems have a nice
 out-of-the-box experience and operate well with their default configurations for our purpose.
 
 Follow these instructions to set up Elasticsearch and Kibana.
 
 #### Setup Elasticsearch
 
-1. Download Elasticsearch 6.2.0 [here](https://www.elastic.co/downloads/past-releases/elasticsearch-6-2-0).
+1. Download Elasticsearch 6.2.2 [here](https://www.elastic.co/downloads/past-releases/elasticsearch-6-2-2).
 
 1. Extract the downloaded archive file and enter the extracted repository.
 
@@ -138,7 +138,7 @@ command.
 
 Setting up Kibana and visualizing data that is stored in Elasticsearch is also easy.
 
-1. Dowload Kibana 6.2.0 [here](https://www.elastic.co/downloads/past-releases/kibana-6-2-0   )
+1. Dowload Kibana 6.2.2 [here](https://www.elastic.co/downloads/past-releases/kibana-6-2-2   )
 
 1. Extract the downloaded archive and enter the extracted repository.
 

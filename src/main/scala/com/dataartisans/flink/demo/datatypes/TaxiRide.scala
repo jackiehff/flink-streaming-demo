@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.dataartisans.flink_demo.datatypes
+package com.dataartisans.flink.demo.datatypes
 
 import java.util.Locale
 

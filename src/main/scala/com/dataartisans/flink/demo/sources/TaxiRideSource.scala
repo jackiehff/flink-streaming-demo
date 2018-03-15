@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.dataartisans.flink_demo.sources
+package com.dataartisans.flink.demo.sources
 
 import java.io._
 import java.util.zip.GZIPInputStream

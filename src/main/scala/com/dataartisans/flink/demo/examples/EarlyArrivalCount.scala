@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.dataartisans.flink_demo.examples
+package com.dataartisans.flink.demo.examples
 
 import java.lang.{Integer => JInt}
 

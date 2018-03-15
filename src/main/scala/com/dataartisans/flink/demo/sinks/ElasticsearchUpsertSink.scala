@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.dataartisans.flink_demo.sinks
+package com.dataartisans.flink.demo.sinks
 
 import java.net.InetAddress
 

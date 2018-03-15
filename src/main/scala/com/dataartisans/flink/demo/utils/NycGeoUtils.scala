@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.dataartisans.flink_demo.utils
+package com.dataartisans.flink.demo.utils
 
 import com.dataartisans.flink_demo.datatypes.GeoPoint
 

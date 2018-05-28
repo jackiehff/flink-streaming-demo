@@ -16,7 +16,7 @@
 
 package com.dataartisans.flink.demo.utils
 
-import com.dataartisans.flink_demo.datatypes.GeoPoint
+import com.dataartisans.flink.demo.datatypes.GeoPoint
 
 /**
   * GeoUtils provides utility methods to deal with GeoPoints with locations in New York City.

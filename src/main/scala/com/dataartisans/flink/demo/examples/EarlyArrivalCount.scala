@@ -18,10 +18,10 @@ package com.dataartisans.flink.demo.examples
 
 import java.lang.{Integer => JInt}
 
-import com.dataartisans.flink_demo.datatypes.{GeoPoint, TaxiRide}
-import com.dataartisans.flink_demo.sinks.ElasticsearchUpsertSink
-import com.dataartisans.flink_demo.sources.TaxiRideSource
-import com.dataartisans.flink_demo.utils.{DemoStreamEnvironment, NycGeoUtils}
+import com.dataartisans.flink.demo.datatypes.{GeoPoint, TaxiRide}
+import com.dataartisans.flink.demo.sinks.ElasticsearchUpsertSink
+import com.dataartisans.flink.demo.sources.TaxiRideSource
+import com.dataartisans.flink.demo.utils.{DemoStreamEnvironment, NycGeoUtils}
 import org.apache.flink.api.common.state.ValueStateDescriptor
 import org.apache.flink.api.common.typeinfo.Types
 import org.apache.flink.streaming.api.TimeCharacteristic

@@ -20,7 +20,7 @@ import java.io._
 import java.util.zip.GZIPInputStream
 import java.util.{Calendar, Random}
 
-import com.dataartisans.flink_demo.datatypes.TaxiRide
+import com.dataartisans.flink.demo.datatypes.TaxiRide
 import org.apache.flink.streaming.api.functions.source.SourceFunction
 import org.apache.flink.streaming.api.functions.source.SourceFunction.SourceContext
 import org.apache.flink.streaming.api.watermark.Watermark

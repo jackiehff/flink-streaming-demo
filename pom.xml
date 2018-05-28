@@ -34,8 +34,8 @@
         <maven.compiler.source>${java.version}</maven.compiler.source>
         <maven.compiler.target>${java.version}</maven.compiler.target>
 
-        <flink.version>1.4.2</flink.version>
-        <elasticsearch.version>6.2.2</elasticsearch.version>
+        <flink.version>1.5.0</flink.version>
+        <elasticsearch.version>6.2.4</elasticsearch.version>
         <joda-time.version>2.9.9</joda-time.version>
         <slf4j.version>1.7.25</slf4j.version>
 
